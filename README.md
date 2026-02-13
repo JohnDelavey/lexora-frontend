@@ -73,4 +73,4 @@ File export (PDF, DOCX, JPEG)
 Supabase document storage
 Production-ready deployment on Vercel
 📜 License
-MIT License
+MIT License 
