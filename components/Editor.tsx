@@ -19,6 +19,7 @@ export default function Editor() {
   const [userId] = useState(() => localStorage.getItem('lexoraUser') || uuidv4());
   const [docId] = useState(uuidv4());
 
+  // Save userId to localStorage to remember login
   useEffect(() => {
     localStorage.setItem('lexoraUser', userId);
   }, [userId]);
@@ -33,20 +34,23 @@ export default function Editor() {
     autofocus: true,
     onUpdate: async ({ editor }) => {
       const html = editor.getHTML();
-      if (autoMode) {
-        const result = await correctText(html);
-        if (result?.correctedText) {
-          editor.commands.setContent(result.correctedText, false);
-          setMetrics(result.metrics || metrics);
-        }
-      } else {
-        // In manual mode, just update metrics without changing text
-        const result = await correctText(html);
-        if (result?.metrics) setMetrics(result.metrics);
-      }
 
-      // Auto-save to Supabase
-      await saveDocument(userId, docId, editor.getHTML());
+      try {
+        const result = await correctText(html);
+
+        if (result?.correctedText && autoMode) {
+          editor.commands.setContent(result.correctedText, false);
+        }
+
+        if (result?.metrics) {
+          setMetrics(result.metrics);
+        }
+
+        // Continuous auto-save to Supabase
+        await saveDocument(userId, docId, editor.getHTML());
+      } catch (err) {
+        console.error('Editor update error:', err);
+      }
     },
   });
 
@@ -67,11 +71,16 @@ export default function Editor() {
   };
 
   return (
-    <div style={{ padding: '20px', maxWidth: '900px', margin: '0 auto' }}>
+    <div style={{ padding: '20px', maxWidth: '900px', margin: '0 auto', fontFamily: 'sans-serif' }}>
       <h1>Lexora AI Writing Studio</h1>
-      <button onClick={handleToggle}>
+      
+      <button 
+        onClick={handleToggle} 
+        style={{ marginBottom: '10px', padding: '6px 12px', cursor: 'pointer' }}
+      >
         Mode: {autoMode ? 'Auto ✅' : 'Manual ✍️'}
       </button>
+
       <EditorContent
         editor={editor}
         style={{
@@ -80,6 +89,8 @@ export default function Editor() {
           minHeight: '300px',
           marginTop: '10px',
           outline: 'none',
+          backgroundColor: 'white',
+          color: 'black',
         }}
       />
 
@@ -91,7 +102,9 @@ export default function Editor() {
 
       <div style={{ marginTop: '20px' }}>
         <h3>Confidence Metrics:</h3>
-        <p>Grammar: {metrics.grammar}% | Clarity: {metrics.clarity}% | Punctuation: {metrics.punctuation}% | Overall: {metrics.overall}%</p>
+        <p>
+          Grammar: {metrics.grammar}% | Clarity: {metrics.clarity}% | Punctuation: {metrics.punctuation}% | Overall: {metrics.overall}%
+        </p>
       </div>
     </div>
   );
